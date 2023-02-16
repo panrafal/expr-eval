@@ -10,6 +10,14 @@
     "linebreak-style": [
       "error",
       "unix"
-    ]
+    ],
+    "array-bracket-spacing": "off",
+    "quote-props": "off",
+    "space-infix-ops": "off",
+    "no-loss-of-precision": "off",
+    "no-prototype-builtins": "off",
+    "brace-style": "off",
+    "keyword-spacing": "off",
+    "object-curly-spacing": "off"
   }
 }
