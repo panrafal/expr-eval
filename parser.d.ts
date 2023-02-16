@@ -9,6 +9,7 @@ export interface Values {
 
 export interface ParserOptions {
   allowMemberAccess?: boolean;
+  allowCommaInNumbers?: boolean;
   operators?: {
     add?: boolean,
     comparison?: boolean,
@@ -64,6 +65,7 @@ export class Parser {
     unaryOps: any;
     functions: any;
     consts: any;
+    readonly options: ParserOptions;
     parse(expression: string): Expression;
     evaluate(expression: string, values?: Value): number;
     static parse(expression: string): Expression;

@@ -319,13 +319,23 @@ TokenStream.prototype.isNumber = function () {
   var startPos = pos;
   var resetPos = pos;
   var foundDot = false;
+  var foundComma = false;
   var foundDigits = false;
   var c;
+  var allowComma = this.parser.options.allowCommaInNumbers;
 
   while (pos < this.expression.length) {
     c = this.expression.charAt(pos);
-    if ((c >= '0' && c <= '9') || (!foundDot && c === '.')) {
+    if ((c >= '0' && c <= '9') || (!foundDot && c === '.') || (allowComma && !foundDot && c === ',')) {
       if (c === '.') {
+        foundDot = true;
+      } else if (c === ',') {
+        const next = this.expression.charAt(pos + 1);
+        if (next < '0' || next > '9') {
+          // 0, cannot be parsed as a number, as it can be a part of an array
+          break;
+        }
+        foundComma = true;
         foundDot = true;
       } else {
         foundDigits = true;
@@ -364,7 +374,9 @@ TokenStream.prototype.isNumber = function () {
   }
 
   if (valid) {
-    this.current = this.newToken(TNUMBER, parseFloat(this.expression.substring(startPos, pos)));
+    var value = this.expression.substring(startPos, pos);
+    if (foundComma) value = value.replace(',', '.');
+    this.current = this.newToken(TNUMBER, parseFloat(value));
     this.pos = pos;
   } else {
     this.pos = resetPos;

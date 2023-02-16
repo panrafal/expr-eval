@@ -8,7 +8,8 @@ var Parser = require('../dist/bundle').Parser;
 describe('Parser', function () {
   [
     { name: 'normal parse()', parser: new Parser() },
-    { name: 'disallowing member access', parser: new Parser({ allowMemberAccess: false }) }
+    { name: 'disallowing member access', parser: new Parser({ allowMemberAccess: false }) },
+    { name: 'allow comma in numbers', parser: new Parser({ allowCommaInNumbers: true }) }
   ].forEach(function (tcase) {
     var parser = tcase.parser;
     describe(tcase.name, function () {
@@ -169,6 +170,21 @@ describe('Parser', function () {
         assert.throws(function () { parser.parse('1 an 2'); }, Error);
         assert.throws(function () { parser.parse('1 a 2'); }, Error);
       });
+
+      if (parser.options.allowCommaInNumbers) {
+        it('should parse numbers with commas if allowed', function () {
+          assert.strictEqual(parser.evaluate('123,45'), 123.45);
+          assert.strictEqual(parser.evaluate('0,1'), 0.1);
+          assert.strictEqual(parser.evaluate(',1'), 0.1);
+          assert.strictEqual(parser.evaluate('123,4 + ,05'), 123.45);
+          assert.throws(function () { parser.parse('123,'); }, Error);
+          assert.throws(function () { parser.parse('123,456.78'); }, Error);
+        });
+      } else {
+        it('should fail on numbers with commas if not allowed', function () {
+          assert.throws(function () { parser.parse('123,45'); }, Error);
+        });
+      }
 
       it('should parse strings', function () {
         assert.strictEqual(parser.evaluate('\'asdf\''), 'asdf');
