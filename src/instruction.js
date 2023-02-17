@@ -11,6 +11,7 @@ export var IEXPREVAL = 'IEXPREVAL';
 export var IMEMBER = 'IMEMBER';
 export var IENDSTATEMENT = 'IENDSTATEMENT';
 export var IARRAY = 'IARRAY';
+export var IOBJECT = 'IOBJECT';
 
 export function Instruction(type, value) {
   this.type = type;
@@ -33,6 +34,8 @@ Instruction.prototype.toString = function () {
       return 'DEF ' + this.value;
     case IARRAY:
       return 'ARRAY ' + this.value;
+    case IOBJECT:
+      return 'OBJECT ' + this.value;
     case IMEMBER:
       return '.' + this.value;
     default:

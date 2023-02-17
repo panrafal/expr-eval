@@ -243,6 +243,23 @@ describe('Operators', function () {
     it('3 in [1, 2]', function () {
       assert.strictEqual(parser.evaluate('3 in toto', { 'toto': [1, 2] }), false);
     });
+
+    it('"a" in {a: "b"}', function () {
+      assert.strictEqual(parser.evaluate('"a" in toto', { 'toto': {a: 'b'} }), true);
+      assert.strictEqual(parser.evaluate('"b" in toto', { 'toto': {a: 'b'} }), false);
+    });
+
+    it('"a" in "abc"', function () {
+      assert.strictEqual(parser.evaluate('"a" in "abc"'), true);
+    });
+
+    it('"d" in "abc"', function () {
+      assert.strictEqual(parser.evaluate('"d" in "abc"'), false);
+    });
+
+    it('"a" in false', function () {
+      assert.strictEqual(parser.evaluate('"a" in false'), false);
+    });
   });
 
   describe('not operator', function () {
@@ -926,7 +943,8 @@ describe('Operators', function () {
     });
 
     it('a["foo"]', function () {
-      assert.strictEqual(Parser.evaluate('a["foo"]', { a: { foo: 'bar' } }), undefined);
+      assert.strictEqual(Parser.evaluate('a["foo"]', { a: { foo: 'bar' } }), 'bar');
+      assert.strictEqual(new Parser({allowMemberAccess: false}).evaluate('a["foo"]', { a: { foo: 'bar' } }), undefined);
     });
 
     it('a[2]^3', function () {

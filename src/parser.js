@@ -49,7 +49,8 @@ import {
   expm1,
   log1p,
   log2,
-  sum
+  sum,
+  objectIndex
 } from './functions';
 
 export function Parser(options) {
@@ -108,7 +109,7 @@ export function Parser(options) {
     or: orOperator,
     'in': inOperator,
     '=': setVar,
-    '[': arrayIndex
+    '[': this.options.allowMemberAccess === false ? arrayIndex : objectIndex
   };
 
   this.ternaryOps = {
@@ -193,6 +194,7 @@ var optionNameMap = {
   ':': 'conditional',
   '=': 'assignment',
   '[': 'array',
+  '{': 'object',
   '()=': 'fndef'
 };
 

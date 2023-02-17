@@ -1,4 +1,4 @@
-import { INUMBER, IOP1, IOP2, IOP3, IVAR, IVARNAME, IFUNCALL, IFUNDEF, IEXPR, IEXPREVAL, IMEMBER, IENDSTATEMENT, IARRAY } from './instruction';
+import { INUMBER, IOP1, IOP2, IOP3, IVAR, IVARNAME, IFUNCALL, IFUNDEF, IEXPR, IEXPREVAL, IMEMBER, IENDSTATEMENT, IARRAY, IOBJECT } from './instruction';
 
 export default function evaluate(tokens, expr, values) {
   var nstack = [];
@@ -113,6 +113,15 @@ export default function evaluate(tokens, expr, values) {
         args.unshift(nstack.pop());
       }
       nstack.push(args);
+    } else if (type === IOBJECT) {
+      argCount = item.value;
+      args = [];
+      while (argCount-- > 0) {
+        const value = nstack.pop();
+        const key = nstack.pop();
+        args.unshift([key, value]);
+      }
+      nstack.push(Object.fromEntries(args));
     } else {
       throw new Error('invalid Expression');
     }

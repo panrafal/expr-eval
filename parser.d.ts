@@ -11,6 +11,8 @@ export interface ParserOptions {
   allowMemberAccess?: boolean;
   allowCommaInNumbers?: boolean;
   operators?: {
+    array?: boolean,
+    object?: boolean,
     add?: boolean,
     comparison?: boolean,
     concatenate?: boolean,

@@ -261,6 +261,26 @@ describe('Expression', function () {
     it('3 and 6 ? 45 > 5 * 11 ? 3 * 3 : 2.4 : 0', function () {
       assert.strictEqual(Parser.evaluate('3 and 6 ? 45 > 5 * 11 ? 3 * 3 : 2.4 : 0'), 2.4);
     });
+
+    it('{one: 1, "two": 2, 3: "three"}', function () {
+      assert.deepStrictEqual(Parser.evaluate('{one: 1, "two": 2, 3: "three"}'), {one: 1, two: 2, 3: 'three'});
+    });
+
+    it('{array: [1, {}], deep: {deeper: {}}}', function () {
+      assert.deepStrictEqual(Parser.evaluate('{array: [1, {}], deep: {deeper: {}}}'), {array: [1, {}], deep: {deeper: {}}});
+    });
+
+    it('key="foo"; {key: "string", [key]: key, [key || "bar"]: key || "BAR"}', function () {
+      assert.deepStrictEqual(Parser.evaluate('key="foo"; {key: "string", [key]: key, [key || "bar"]: key || "BAR"}'), {key: 'string', foo: 'foo', foobar: 'fooBAR'});
+    });
+
+    it('f(obj, k) = {[k]: obj[k]}; f({one: 1, two: 2}, "one")', function () {
+      assert.deepStrictEqual(Parser.evaluate('f(obj, k) = {[k]: obj[k]}; f({one: 1, two: 2}, "one")'), {one: 1});
+    });
+
+    it('keeps object key order', function () {
+      assert.deepStrictEqual(Object.keys(Parser.evaluate('{one: 1, two: 2, three: 3}')), ['one', 'two', 'three']);
+    });
   });
 
   describe('substitute()', function () {

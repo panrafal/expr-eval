@@ -1,5 +1,5 @@
-import { TOP, TNUMBER, TSTRING, TPAREN, TBRACKET, TCOMMA, TNAME, TSEMICOLON, TEOF } from './token';
-import { Instruction, INUMBER, IVAR, IVARNAME, IFUNCALL, IFUNDEF, IEXPR, IMEMBER, IENDSTATEMENT, IARRAY, ternaryInstruction, binaryInstruction, unaryInstruction } from './instruction';
+import { TOP, TNUMBER, TSTRING, TPAREN, TBRACKET, TCOMMA, TNAME, TSEMICOLON, TEOF, TBRACE } from './token';
+import { Instruction, INUMBER, IVAR, IVARNAME, IFUNCALL, IFUNDEF, IEXPR, IMEMBER, IENDSTATEMENT, IARRAY, ternaryInstruction, binaryInstruction, unaryInstruction, IOBJECT } from './instruction';
 import contains from './contains';
 
 export function ParserState(parser, tokenStream, options) {
@@ -79,8 +79,16 @@ ParserState.prototype.parseAtom = function (instr) {
       var argCount = this.parseArrayList(instr);
       instr.push(new Instruction(IARRAY, argCount));
     }
+  } else if (this.accept(TBRACE, '{')) {
+    if (this.accept(TBRACE, '}')) {
+      instr.push(new Instruction(IOBJECT, 0));
+    } else {
+      var entryCount = this.parseObjectEntries(instr);
+      instr.push(new Instruction(IOBJECT, entryCount));
+    }
   } else {
-    throw new Error('unexpected ' + this.nextToken);
+    var coords = this.tokens.getCoordinates();
+    throw new Error('parse error [' + coords.line + ':' + coords.column + ']: Unexpected ' + this.nextToken);
   }
 };
 
@@ -127,6 +135,33 @@ ParserState.prototype.parseArrayList = function (instr) {
   }
 
   return argCount;
+};
+
+ParserState.prototype.parseObjectEntries = function (instr) {
+  var entryCount = 0;
+
+  while (!this.accept(TBRACE, '}')) {
+    if (
+      this.accept(TSTRING) ||
+      this.accept(TNUMBER) ||
+      this.accept(TNAME)
+    ) {
+      instr.push(new Instruction(INUMBER, this.current.value));
+    } else {
+      this.expect(TBRACKET, '[');
+      this.parseExpression(instr);
+      this.expect(TBRACKET, ']');
+    }
+    ++entryCount;
+    this.expect(TOP, ':');
+    this.parseExpression(instr);
+    if (!this.accept(TCOMMA)) {
+      this.expect(TBRACE, '}');
+      break;
+    }
+  }
+
+  return entryCount;
 };
 
 ParserState.prototype.parseVariableAssignmentExpression = function (instr) {

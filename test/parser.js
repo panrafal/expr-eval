@@ -239,6 +239,30 @@ describe('Parser', function () {
         assert.throws(function () { parser.parse('[1, 2, 3+4, 5*6, (7/8)'); }, Error);
       });
 
+      it('should parse objects correctly', function () {
+        assert.strictEqual(parser.parse('{one: 1, "two": 2, ["three"]: 3+4, [four]: 5*6, 5: (7/8), [5 + 1]: 6}').toString(), '{"one": 1, "two": 2, "three": (3 + 4), [four]: (5 * 6), 5: (7 / 8), [(5 + 1)]: 6}');
+      });
+
+      it('should allow hanging comma', function () {
+        assert.strictEqual(parser.parse('{one: 1,}').toString(), '{"one": 1}');
+      });
+
+      it('should parse empty objects correctly', function () {
+        assert.strictEqual(parser.parse('{}').toString(), '{}');
+      });
+
+      it('should fail with missing }', function () {
+        assert.throws(function () { parser.parse('{one: 1'); }, Error);
+      });
+
+      it('should fail object with wrong expression', function () {
+        assert.throws(function () { parser.parse('{one + two: 1}'); }, Error);
+      });
+
+      it('should fail object with parentheses', function () {
+        assert.throws(function () { parser.parse('{(one): 1}'); }, Error);
+      });
+
       it('should parse operators that look like functions as function calls', function () {
         assert.strictEqual(parser.parse('sin 2^3').toString(), '(sin (2 ^ 3))');
         assert.strictEqual(parser.parse('sin(2)^3').toString(), '((sin 2) ^ 3)');
@@ -567,6 +591,16 @@ describe('Parser', function () {
 
       assert.throws(function () { parser.parse('[1, 2, 3]'); }, /\[/);
       assert.throws(function () { parser.parse('a[0]'); }, /\[/);
+    });
+
+    it('should allow objects to be disabled', function () {
+      var parser = new Parser({
+        operators: {
+          object: false
+        }
+      });
+
+      assert.throws(function () { parser.parse('{one: 1}'); }, /\{/);
     });
 
     it('Should allow functions to be disabled', function () {

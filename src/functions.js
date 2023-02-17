@@ -60,7 +60,13 @@ export function orOperator(a, b) {
 }
 
 export function inOperator(a, b) {
-  return contains(b, a);
+  if (!b) return false;
+  if (Array.isArray(b)) {
+    return contains(b, a);
+  } else if (typeof b === 'object') {
+    return a in b;
+  }
+  return String(b).includes(a);
 }
 
 export function sinh(a) {
@@ -251,7 +257,14 @@ export function setVar(name, value, variables) {
 }
 
 export function arrayIndex(array, index) {
+  if (!Array.isArray(array)) return undefined;
   return array[index | 0];
+}
+
+export function objectIndex(object, index) {
+  if (Array.isArray(object)) return arrayIndex(object, index);
+  if (!object) return undefined;
+  return object[index];
 }
 
 export function max(array) {
