@@ -11,6 +11,7 @@ var IEXPREVAL = 'IEXPREVAL';
 var IMEMBER = 'IMEMBER';
 var IENDSTATEMENT = 'IENDSTATEMENT';
 var IARRAY = 'IARRAY';
+var IOBJECT = 'IOBJECT';
 
 function Instruction(type, value) {
   this.type = type;
@@ -33,6 +34,8 @@ Instruction.prototype.toString = function () {
       return 'DEF ' + this.value;
     case IARRAY:
       return 'ARRAY ' + this.value;
+    case IOBJECT:
+      return 'OBJECT ' + this.value;
     case IMEMBER:
       return '.' + this.value;
     default:
@@ -262,6 +265,15 @@ function evaluate(tokens, expr, values) {
         args.unshift(nstack.pop());
       }
       nstack.push(args);
+    } else if (type === IOBJECT) {
+      argCount = item.value;
+      args = [];
+      while (argCount-- > 0) {
+        const value = nstack.pop();
+        const key = nstack.pop();
+        args.unshift([key, value]);
+      }
+      nstack.push(Object.fromEntries(args));
     } else {
       throw new Error('invalid Expression');
     }
@@ -396,6 +408,20 @@ function expressionToString(tokens, toJS) {
         args.unshift(nstack.pop());
       }
       nstack.push('[' + args.join(', ') + ']');
+    } else if (type === IOBJECT) {
+      argCount = item.value;
+      args = [];
+      while (argCount-- > 0) {
+        const v = nstack.pop();
+        const k = String(nstack.pop());
+        const kc = k.charAt(0);
+        if (kc === '"' || (kc >= '0' && kc <= '9')) {
+          args.unshift(k + ': ' + v);
+        } else {
+          args.unshift('[' + k + ']: ' + v);
+        }
+      }
+      nstack.push('{' + args.join(', ') + '}');
     } else if (type === IEXPR) {
       nstack.push('(' + expressionToString(item.value, toJS) + ')');
     } else if (type === IENDSTATEMENT) ; else {
@@ -525,6 +551,7 @@ var TNUMBER = 'TNUMBER';
 var TSTRING = 'TSTRING';
 var TPAREN = 'TPAREN';
 var TBRACKET = 'TBRACKET';
+var TBRACE = 'TBRACE';
 var TCOMMA = 'TCOMMA';
 var TNAME = 'TNAME';
 var TSEMICOLON = 'TSEMICOLON';
@@ -580,6 +607,7 @@ TokenStream.prototype.next = function () {
       this.isString() ||
       this.isParen() ||
       this.isBracket() ||
+      this.isBrace() ||
       this.isComma() ||
       this.isSemicolon() ||
       this.isNamedOp() ||
@@ -626,6 +654,16 @@ TokenStream.prototype.isBracket = function () {
   var c = this.expression.charAt(this.pos);
   if ((c === '[' || c === ']') && this.isOperatorEnabled('[')) {
     this.current = this.newToken(TBRACKET, c);
+    this.pos++;
+    return true;
+  }
+  return false;
+};
+
+TokenStream.prototype.isBrace = function () {
+  var c = this.expression.charAt(this.pos);
+  if ((c === '{' || c === '}') && this.isOperatorEnabled('{')) {
+    this.current = this.newToken(TBRACE, c);
     this.pos++;
     return true;
   }
@@ -1081,8 +1119,16 @@ ParserState.prototype.parseAtom = function (instr) {
       var argCount = this.parseArrayList(instr);
       instr.push(new Instruction(IARRAY, argCount));
     }
+  } else if (this.accept(TBRACE, '{')) {
+    if (this.accept(TBRACE, '}')) {
+      instr.push(new Instruction(IOBJECT, 0));
+    } else {
+      var entryCount = this.parseObjectEntries(instr);
+      instr.push(new Instruction(IOBJECT, entryCount));
+    }
   } else {
-    throw new Error('unexpected ' + this.nextToken);
+    var coords = this.tokens.getCoordinates();
+    throw new Error('parse error [' + coords.line + ':' + coords.column + ']: Unexpected ' + this.nextToken);
   }
 };
 
@@ -1129,6 +1175,33 @@ ParserState.prototype.parseArrayList = function (instr) {
   }
 
   return argCount;
+};
+
+ParserState.prototype.parseObjectEntries = function (instr) {
+  var entryCount = 0;
+
+  while (!this.accept(TBRACE, '}')) {
+    if (
+      this.accept(TSTRING) ||
+      this.accept(TNUMBER) ||
+      this.accept(TNAME)
+    ) {
+      instr.push(new Instruction(INUMBER, this.current.value));
+    } else {
+      this.expect(TBRACKET, '[');
+      this.parseExpression(instr);
+      this.expect(TBRACKET, ']');
+    }
+    ++entryCount;
+    this.expect(TOP, ':');
+    this.parseExpression(instr);
+    if (!this.accept(TCOMMA)) {
+      this.expect(TBRACE, '}');
+      break;
+    }
+  }
+
+  return entryCount;
 };
 
 ParserState.prototype.parseVariableAssignmentExpression = function (instr) {
@@ -1396,7 +1469,13 @@ function orOperator(a, b) {
 }
 
 function inOperator(a, b) {
-  return contains(b, a);
+  if (!b) return false;
+  if (Array.isArray(b)) {
+    return contains(b, a);
+  } else if (typeof b === 'object') {
+    return a in b;
+  }
+  return String(b).includes(a);
 }
 
 function sinh(a) {
@@ -1587,7 +1666,14 @@ function setVar(name, value, variables) {
 }
 
 function arrayIndex(array, index) {
+  if (!Array.isArray(array)) return undefined;
   return array[index | 0];
+}
+
+function objectIndex(object, index) {
+  if (Array.isArray(object)) return arrayIndex(object, index);
+  if (!object) return undefined;
+  return object[index];
 }
 
 function max(array) {
@@ -1745,7 +1831,7 @@ function Parser(options) {
     or: orOperator,
     'in': inOperator,
     '=': setVar,
-    '[': arrayIndex
+    '[': this.options.allowMemberAccess === false ? arrayIndex : objectIndex
   };
 
   this.ternaryOps = {
@@ -1830,6 +1916,7 @@ var optionNameMap = {
   ':': 'conditional',
   '=': 'assignment',
   '[': 'array',
+  '{': 'object',
   '()=': 'fndef'
 };
 
